@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic_settings
+pydantic
+openpyxl
+langchain
+langchain_google_genai
+qdrant_client
+langchain_qdrant
+tabula-py
+pandas
+requests

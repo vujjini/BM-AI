@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Qdrant Vector Database (Simplified)
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: bm-ai-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - bm-ai-network
+    restart: unless-stopped
+
+  # FastAPI Backend (No health check dependency)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bm-ai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_URL=
+      - QDRANT_API_KEY=
+    volumes:
+      - ./uploads:/tmp/uploads
+      - .:/app  # Mount source code for development
+    networks:
+      - bm-ai-network
+    restart: unless-stopped
+    # Wait for Qdrant to start (simple delay)
+    depends_on:
+      - qdrant
+
+volumes:
+  qdrant_storage:
+    driver: local
+
+networks:
+  bm-ai-network:
+    driver: bridge
