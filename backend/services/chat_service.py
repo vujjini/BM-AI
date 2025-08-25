@@ -15,7 +15,7 @@ class ChatService:
         self.prompt_template = PromptTemplate(
             template="""
             You are a helpful assistant for building managers. Use the provided context 
-            from shift logs to answer questions accurately and helpfully.
+            from shift logs to answer questions accurately and helpfully in a human like manner.
             
             If the context doesn't contain relevant information, say so clearly.
             Keep your answers concise but informative.
