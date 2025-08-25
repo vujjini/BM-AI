@@ -105,6 +105,7 @@ class PDFProcessor:
             workbook = openpyxl.load_workbook(excel_output_path)
             extracted_data = self.extract_info_from_excel(workbook)
             workbook.close()
+            logger.info(f"Extracted data from Excel file {excel_output_path}")
             
             return True, extracted_data, excel_output_path
             

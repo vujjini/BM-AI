@@ -57,6 +57,21 @@ def get_default_text_splitter() -> RecursiveCharacterTextSplitter:
     )
 
 
+def get_entry_based_text_splitter() -> RecursiveCharacterTextSplitter:
+    """
+    Get a text splitter optimized for small, discrete entries (4-10 sentences each).
+    This splitter preserves entry boundaries and minimizes splitting individual entries.
+    
+    Returns:
+        RecursiveCharacterTextSplitter: Configured text splitter for entries
+    """
+    return RecursiveCharacterTextSplitter(
+        chunk_size=600,       # Smaller chunks to preserve entry boundaries
+        chunk_overlap=50,     # Minimal overlap to avoid duplicating entries
+        separators=["\n\n", "\n", " | ", " ", ""]  # Prioritize line breaks
+    )
+
+
 def convert_extracted_data_to_content(extracted_data: List[List]) -> str:
     """
     Convert extracted data rows to text content.
@@ -95,10 +110,31 @@ def create_document_from_content(content: str, filename: str, source: str,
     return Document(page_content=content, metadata=metadata)
 
 
+def get_smart_text_splitter(content: str) -> RecursiveCharacterTextSplitter:
+    """
+    Intelligently select the best text splitter based on content characteristics.
+    
+    Args:
+        content: The text content to analyze
+        
+    Returns:
+        RecursiveCharacterTextSplitter: Optimal splitter for the content
+    """
+    # Analyze content characteristics
+    lines = content.split('\n')
+    avg_line_length = sum(len(line) for line in lines) / len(lines) if lines else 0
+    
+    # If content has many short lines (typical of entry-based data)
+    if len(lines) > 5 and avg_line_length < 150:
+        return get_entry_based_text_splitter()
+    else:
+        return get_default_text_splitter()
+
+
 def create_documents_from_extracted_data(extracted_data: List[List], filename: str, 
                                         source: str, additional_metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
     """
-    Create LangChain Documents from extracted data with text splitting.
+    Create LangChain Documents from extracted data with intelligent text splitting.
     
     Args:
         extracted_data: List of extracted data rows
@@ -118,8 +154,8 @@ def create_documents_from_extracted_data(extracted_data: List[List], filename: s
     # Create document
     doc = create_document_from_content(content, filename, source, additional_metadata)
     
-    # Split document into chunks
-    text_splitter = get_default_text_splitter()
+    # Split document into chunks using smart splitter selection
+    text_splitter = get_smart_text_splitter(content)
     return text_splitter.split_documents([doc])
 
 

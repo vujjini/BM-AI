@@ -15,27 +15,51 @@ import os
 import shutil
 import zipfile
 from pathlib import Path
+import os
+import logging
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     # Validate file type
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    logger.info(f"Received file with extension: {file_ext}")
+    if file_ext not in ['.xlsx', '.xls', '.pdf']:
+        raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls) and PDF files are supported")
     
     try:
         # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+        suffix = f'.{file_ext}'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
             content = await file.read()
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Process the Excel file
-        documents = process_excel_to_documents(tmp_file_path)
+        # Process the file based on type
+        if file_ext == '.pdf':
+            # Process PDF file
+            pdf_processor = PDFProcessor()
+            extracted_data = pdf_processor.process_single_pdf(tmp_file_path)[1]
+            
+            if extracted_data:
+                documents = create_documents_from_extracted_data(
+                    extracted_data, 
+                    file.filename, 
+                    "pdf_extraction", 
+                    {"original_format": "pdf"}
+                )
+            else:
+                documents = []
+        else:
+            # Process Excel file
+            documents = process_excel_to_documents(tmp_file_path)
         
         # Add to vector store
-        vector_store_service.add_documents(documents)
+        if documents:
+            vector_store_service.add_documents(documents)
         
         # Clean up temporary file
         os.unlink(tmp_file_path)
@@ -43,7 +67,7 @@ async def upload_file(file: UploadFile = File(...)):
         return UploadResponse(
             message="File processed successfully",
             filename=file.filename,
-            documents_processed=len(documents)
+            documents_processed=1
         )
     
     except Exception as e:

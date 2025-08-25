@@ -1,0 +1,123 @@
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 500px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-xl);
+  animation: slideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  position: relative;
+}
+
+.notification::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.notification.success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: var(--shadow-xl), 0 0 30px rgba(16, 185, 129, 0.2);
+}
+
+.notification.success::before {
+  background: linear-gradient(90deg, transparent, var(--accent-success), transparent);
+}
+
+.notification.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: var(--shadow-xl), 0 0 30px rgba(239, 68, 68, 0.2);
+}
+
+.notification.error::before {
+  background: linear-gradient(90deg, transparent, var(--accent-error), transparent);
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  filter: drop-shadow(0 0 8px currentColor);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.notification.success .notification-icon {
+  color: var(--accent-success);
+}
+
+.notification.error .notification-icon {
+  color: var(--accent-error);
+}
+
+.notification-message {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  font-weight: 500;
+}
+
+.notification.success .notification-message {
+  color: var(--text-primary);
+}
+
+.notification.error .notification-message {
+  color: var(--text-primary);
+}
+
+.notification-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.notification-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
