@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     
     # Qdrant configuration - supports both local and cloud setups
-    QDRANT_HOST: str = "qdrant"
+    QDRANT_HOST: str = "localhost"  # Use "localhost" when running backend locally, "qdrant" in Docker
     QDRANT_PORT: int = 6333
     QDRANT_URL: Optional[str] = None  # For cloud setup, overrides host/port
     QDRANT_API_KEY: Optional[str] = None  # Optional for local setup

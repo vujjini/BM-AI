@@ -4,7 +4,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from config import settings
 from typing import List
-from langchain.schema import Document
+from langchain_core.documents import Document
 import logging
 
 # Set up logging
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class VectorStoreService:
     def __init__(self):
+        logger.info("Initializing vector store service...")
         self.embeddings = GoogleGenerativeAIEmbeddings(
             model="models/text-embedding-004",
             google_api_key=settings.GOOGLE_API_KEY
@@ -27,11 +28,12 @@ class VectorStoreService:
             )
         else:
             # Local setup with host and port
+            logger.info("Using local Qdrant setup")
             self.client = QdrantClient(
                 host=settings.QDRANT_HOST,
                 port=settings.QDRANT_PORT
             )
-        
+        logger.info("Qdrant client initialized successfully")
         self.collection_name = "building_logs"
         self.vectorstore = None
         self._initialize_vectorstore()

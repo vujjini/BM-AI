@@ -1,13 +1,13 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+from langchain_classic.chains import RetrievalQA
+from langchain_classic.prompts import PromptTemplate
 from services.vector_store import vector_store_service
 from config import settings
 
 class ChatService:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-pro",
             google_api_key=settings.GOOGLE_API_KEY,
             temperature=0.1
         )
