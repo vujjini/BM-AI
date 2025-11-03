@@ -6,8 +6,8 @@ This module centralizes common functionality to reduce code duplication.
 import openpyxl
 import os
 from typing import List, Dict, Any, Optional, Tuple
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def extract_info_from_excel(wb: openpyxl.Workbook) -> List[List]:

@@ -124,10 +124,11 @@ async def upload_folder(files: List[UploadFile] = File(...)):
             shutil.rmtree(temp_dir)
 
 
-@router.post("/upload-zip", response_model=FolderUploadResponse)
+@router.post("/upload_zip_folder", response_model=FolderUploadResponse)
 async def upload_zip_folder(file: UploadFile = File(...)):
     """
     Upload and process a ZIP file containing PDF and Excel files.
+    Each file is processed using the same logic as single file upload.
     """
     if not file.filename or not file.filename.lower().endswith('.zip'):
         raise HTTPException(status_code=400, detail="Only ZIP files are supported")
@@ -145,11 +146,12 @@ async def upload_zip_folder(file: UploadFile = File(...)):
             f.write(content)
         
         # Extract ZIP file
+        logger.info(f"Extracting ZIP file: {file.filename}")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
         
-        # Process the extracted folder
-        result = await process_folder_files(extract_dir)
+        # Process the extracted files (PDF and Excel)
+        result = await process_zip_folder(extract_dir)
         
         return result
         
@@ -160,6 +162,118 @@ async def upload_zip_folder(file: UploadFile = File(...)):
         # Clean up temporary directory
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
+
+async def process_zip_folder(folder_path: str) -> FolderUploadResponse:
+    """
+    Process all PDF and Excel files in a folder using the same logic as single file upload.
+    Each file type is processed with its respective working logic.
+    """
+    pdf_processor = PDFProcessor()
+    file_results = []
+    total_documents = 0
+    successful_files = 0
+    failed_files = 0
+    processing_summary = {'pdf': 0, 'excel': 0}
+    
+    # Get all PDF and Excel files in the folder (including subdirectories)
+    all_files = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_lower = file.lower()
+            if file_lower.endswith('.pdf') or file_lower.endswith(('.xlsx', '.xls')):
+                all_files.append(os.path.join(root, file))
+    
+    logger.info(f"Found {len(all_files)} files to process (PDF and Excel)")
+    
+    if not all_files:
+        raise HTTPException(status_code=400, detail="No PDF or Excel files found in the ZIP archive")
+    
+    # Process each file using the same logic as single file upload
+    for file_path in all_files:
+        filename = os.path.basename(file_path)
+        file_ext = os.path.splitext(filename)[1].lower()
+        
+        try:
+            if file_ext == '.pdf':
+                # Process PDF file - same as single file upload
+                extracted_data = pdf_processor.process_single_pdf(file_path)[1]
+                
+                if extracted_data:
+                    # Convert to documents - same as single file upload
+                    documents = create_documents_from_extracted_data(
+                        extracted_data, 
+                        filename, 
+                        "pdf_extraction", 
+                        {"original_format": "pdf"}
+                    )
+                    
+                    # Add to vector store - same as single file upload
+                    vector_store_service.add_documents(documents)
+                    
+                    file_results.append(FileProcessingResult(
+                        filename=filename,
+                        success=True,
+                        documents_processed=len(documents),
+                        file_type='pdf'
+                    ))
+                    
+                    total_documents += len(documents)
+                    successful_files += 1
+                    processing_summary['pdf'] += 1
+                    logger.info(f"Successfully processed PDF: {filename} ({len(documents)} documents)")
+                else:
+                    file_results.append(FileProcessingResult(
+                        filename=filename,
+                        success=False,
+                        documents_processed=0,
+                        error_message="No data extracted from PDF",
+                        file_type='pdf'
+                    ))
+                    failed_files += 1
+                    logger.warning(f"No data extracted from PDF: {filename}")
+                    
+            elif file_ext in ['.xlsx', '.xls']:
+                # Process Excel file - same as single file upload
+                documents = process_excel_to_documents(file_path)
+                
+                # Add to vector store - same as single file upload
+                if documents:
+                    vector_store_service.add_documents(documents)
+                
+                file_results.append(FileProcessingResult(
+                    filename=filename,
+                    success=True,
+                    documents_processed=len(documents) if documents else 0,
+                    file_type='excel'
+                ))
+                
+                total_documents += len(documents) if documents else 0
+                successful_files += 1
+                processing_summary['excel'] += 1
+                logger.info(f"Successfully processed Excel: {filename} ({len(documents) if documents else 0} documents)")
+                
+        except Exception as e:
+            file_type = 'pdf' if file_ext == '.pdf' else 'excel'
+            file_results.append(FileProcessingResult(
+                filename=filename,
+                success=False,
+                documents_processed=0,
+                error_message=str(e),
+                file_type=file_type
+            ))
+            failed_files += 1
+            logger.error(f"Failed to process {filename}: {str(e)}")
+    
+    return FolderUploadResponse(
+        message=f"Processed {len(all_files)} files: {successful_files} successful, {failed_files} failed",
+        total_files_processed=len(all_files),
+        successful_files=successful_files,
+        failed_files=failed_files,
+        total_documents_processed=total_documents,
+        file_results=file_results,
+        processing_summary=processing_summary
+    )
 
 
 async def process_folder_files(folder_path: str, max_files: Optional[int] = None) -> FolderUploadResponse:

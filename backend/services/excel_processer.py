@@ -1,5 +1,5 @@
 import openpyxl
-from langchain.schema import Document
+from langchain_core.documents import Document
 from typing import List, Optional
 import os
 from .pdf_processor import PDFProcessor

@@ -11,3 +11,5 @@ langchain_qdrant
 tabula-py
 pandas
 requests
+langchain-text-splitters
+langchain-classic
