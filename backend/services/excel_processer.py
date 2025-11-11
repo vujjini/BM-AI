@@ -10,6 +10,10 @@ from .document_utils import (
     convert_extracted_data_to_content,
     get_default_text_splitter
 )
+import uuid
+import shutil
+from config import settings
+
 
 # Keep the original function name for backward compatibility
 def extract_info(wb):
@@ -44,11 +48,15 @@ def process_pdf_folder_to_documents(folder_path: str, max_files: Optional[int] =
     for filename, extracted_data in extracted_data_list:
         if extracted_data:
             # Use shared utility for document creation
+            stored_filename = f"{uuid.uuid4()}_{filename}"
+            stored_path = os.path.join(settings.UPLOADS_DIR, stored_filename)
+            original_pdf_path = os.path.join(folder_path, filename)
+            shutil.copy2(original_pdf_path, stored_path)
             documents = create_documents_from_extracted_data(
                 extracted_data, 
                 filename, 
                 "pdf_extraction", 
-                {"original_format": "pdf"}
+                {"original_format": "pdf", "pdf_path": stored_filename}
             )
             all_documents.extend(documents)
     

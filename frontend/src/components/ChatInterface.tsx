@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageCircle, Bot, User, ExternalLink, Loader } from 'lucide-react';
-import { apiService, ChatResponse } from '../services/api';
+import { Send, MessageCircle, Bot, User, FileText, Loader } from 'lucide-react';
+import { apiService, ChatResponse, Source } from '../services/api';
+import { PDFViewer } from './PDFViewer';
 import './ChatInterface.css';
 
 interface Message {
   id: string;
   type: 'user' | 'bot';
   content: string;
-  sources?: string[];
+  sources?: Source[];
   timestamp: Date;
 }
 
@@ -19,6 +20,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onError }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPDF, setSelectedPDF] = useState<{ filename: string; pdfPath: string | null } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,17 +49,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onError }) => {
 
     try {
       const response: ChatResponse = await apiService.chat(userMessage.content);
+      console.log('Chat response:', response);
+      console.log('Sources:', response.sources);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
         content: response.answer,
-        sources: response.sources,
+        sources: response.sources || [],
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, botMessage]);
     } catch (error: any) {
+      console.error('Chat error:', error);
+      console.error('Error response:', error.response);
       const errorMessage = error.response?.data?.detail || error.message || 'Failed to get response';
       onError(errorMessage);
       
@@ -76,38 +82,86 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onError }) => {
   };
 
   const renderMessage = (message: Message) => {
-    return (
-      <div key={message.id} className={`message ${message.type}`}>
-        <div className="message-avatar">
-          {message.type === 'user' ? <User size={20} /> : <Bot size={20} />}
-        </div>
-        <div className="message-content">
-          <div className="message-text">
-            {message.content}
+    try {
+      return (
+        <div key={message.id} className={`message ${message.type}`}>
+          <div className="message-avatar">
+            {message.type === 'user' ? <User size={20} /> : <Bot size={20} />}
           </div>
-          {message.sources && message.sources.length > 0 && (
-            <div className="message-sources">
-              <h4>Sources:</h4>
-              <ul>
-                {message.sources.map((source, index) => (
-                  <li key={index}>
-                    <ExternalLink size={14} />
-                    {source}
-                  </li>
-                ))}
-              </ul>
+          <div className="message-content">
+            <div className="message-text">
+              {message.content}
             </div>
-          )}
-          <div className="message-timestamp">
-            {message.timestamp.toLocaleTimeString()}
+            {message.sources && message.sources.length > 0 && (
+              <div className="message-sources">
+                <h4>Sources:</h4>
+                <ul>
+                  {message.sources
+                    .filter((source): source is Source => {
+                      return source !== null && 
+                             source !== undefined && 
+                             typeof source === 'object' &&
+                             'filename' in source;
+                    })
+                    .map((source, index) => {
+                      const filename = typeof source.filename === 'string' ? source.filename : 'Unknown';
+                      const handleClick = () => {
+                        console.log('Source clicked:', source);
+                        console.log('Has pdf_path:', source.pdf_path);
+                        if (source.pdf_path) {
+                          console.log('Opening PDF:', filename, source.pdf_path);
+                          setSelectedPDF({ filename: filename, pdfPath: source.pdf_path });
+                        } else {
+                          console.log('No pdf_path available for:', filename);
+                        }
+                      };
+                      
+                      return (
+                        <li 
+                          key={index}
+                          className={source.pdf_path ? 'clickable-source' : ''}
+                          onClick={handleClick}
+                          style={{ cursor: source.pdf_path ? 'pointer' : 'default' }}
+                        >
+                          <FileText size={14} />
+                          <span>{filename}</span>
+                          {!source.pdf_path && <span style={{ fontSize: '11px', color: '#888', marginLeft: '8px' }}>(no preview)</span>}
+                        </li>
+                      );
+                    })}
+                </ul>
+              </div>
+            )}
+            <div className="message-timestamp">
+              {message.timestamp.toLocaleTimeString()}
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    } catch (error) {
+      console.error('Error rendering message:', error, message);
+      return (
+        <div key={message.id} className={`message ${message.type}`}>
+          <div className="message-content">
+            <div className="message-text">
+              Error displaying message
+            </div>
+          </div>
+        </div>
+      );
+    }
   };
 
   return (
-    <div className="chat-interface">
+    <>
+      {selectedPDF && (
+        <PDFViewer
+          filename={selectedPDF.filename}
+          pdfPath={selectedPDF.pdfPath}
+          onClose={() => setSelectedPDF(null)}
+        />
+      )}
+      <div className="chat-interface">
       <div className="chat-header">
         <MessageCircle size={24} />
         <h2>Building Manager Assistant</h2>
@@ -172,5 +226,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onError }) => {
         </div>
       </form>
     </div>
+    </>
   );
 };

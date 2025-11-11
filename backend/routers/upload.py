@@ -16,11 +16,10 @@ import shutil
 import zipfile
 from pathlib import Path
 import os
-import logging
+from config import settings, logger
+import uuid
 
 router = APIRouter()
-
-logger = logging.getLogger(__name__)
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
@@ -40,6 +39,11 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Process the file based on type
         if file_ext == '.pdf':
+            # Store PDF file permanently
+            stored_filename = f"{uuid.uuid4()}_{file.filename}"
+            stored_path = os.path.join(settings.UPLOADS_DIR, stored_filename)
+            shutil.copy2(tmp_file_path, stored_path)
+            
             # Process PDF file
             pdf_processor = PDFProcessor()
             extracted_data = pdf_processor.process_single_pdf(tmp_file_path)[1]
@@ -49,7 +53,7 @@ async def upload_file(file: UploadFile = File(...)):
                     extracted_data, 
                     file.filename, 
                     "pdf_extraction", 
-                    {"original_format": "pdf"}
+                    {"original_format": "pdf", "pdf_path": stored_filename}
                 )
             else:
                 documents = []
@@ -196,6 +200,11 @@ async def process_zip_folder(folder_path: str) -> FolderUploadResponse:
         
         try:
             if file_ext == '.pdf':
+                # Store PDF file permanently
+                stored_filename = f"{uuid.uuid4()}_{filename}"
+                stored_path = os.path.join(settings.UPLOADS_DIR, stored_filename)
+                shutil.copy2(file_path, stored_path)
+                
                 # Process PDF file - same as single file upload
                 extracted_data = pdf_processor.process_single_pdf(file_path)[1]
                 
@@ -205,7 +214,7 @@ async def process_zip_folder(folder_path: str) -> FolderUploadResponse:
                         extracted_data, 
                         filename, 
                         "pdf_extraction", 
-                        {"original_format": "pdf"}
+                        {"original_format": "pdf", "pdf_path": stored_filename}
                     )
                     
                     # Add to vector store - same as single file upload
@@ -305,6 +314,11 @@ async def process_folder_files(folder_path: str, max_files: Optional[int] = None
         
         try:
             if file_type == 'pdf':
+                # Store PDF file permanently
+                stored_filename = f"{uuid.uuid4()}_{filename}"
+                stored_path = os.path.join(settings.UPLOADS_DIR, stored_filename)
+                shutil.copy2(file_path, stored_path)
+                
                 # Process PDF file
                 success, extracted_data, excel_path = processor.process_single_pdf(file_path)
                 
@@ -314,7 +328,7 @@ async def process_folder_files(folder_path: str, max_files: Optional[int] = None
                         extracted_data, 
                         filename, 
                         "pdf_extraction", 
-                        {"original_format": "pdf"}
+                        {"original_format": "pdf", "pdf_path": stored_filename}
                     )
                     vector_store_service.add_documents(documents)
                     

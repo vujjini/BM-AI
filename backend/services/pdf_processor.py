@@ -4,12 +4,8 @@ import openpyxl
 import tabula
 from typing import List, Tuple, Optional
 from pathlib import Path
-import logging
 from .document_utils import extract_info_from_excel, safe_filename_for_excel_sheet
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from config import logger
 
 class PDFProcessor:
     """

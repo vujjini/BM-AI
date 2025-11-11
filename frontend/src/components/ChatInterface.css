@@ -264,6 +264,25 @@
   margin-bottom: 4px;
   color: #1e40af;
   font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.message-sources li.clickable-source {
+  cursor: pointer;
+  padding: 6px 10px;
+  margin: 0 -10px 4px -10px;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.message-sources li.clickable-source:hover {
+  background: #dbeafe;
+  color: #1e3a8a;
+  transform: translateX(4px);
+}
+
+.message-sources li.clickable-source:active {
+  transform: translateX(4px) scale(0.98);
 }
 
 .message-timestamp {

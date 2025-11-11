@@ -1,12 +1,17 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 class ChatRequest(BaseModel):
     question: str
 
+class Source(BaseModel):
+    filename: str
+    pdf_path: Optional[str] = None
+
 class ChatResponse(BaseModel):
     answer: str
-    sources: List[str]
+    sources: List[Source]
+    enhanced_question: Optional[str] = None  # Add this line
 
 class FileProcessingResult(BaseModel):
     filename: str

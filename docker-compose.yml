@@ -37,8 +37,9 @@ services:
       - QDRANT_PORT=6333
       - QDRANT_URL=
       - QDRANT_API_KEY=
+      - LOG_LEVEL=DEBUG
     volumes:
-      - ./backend/uploads:/tmp/uploads
+      - ./backend/uploads:/app/uploads
       - ./backend:/app
     depends_on:
       qdrant:
@@ -72,6 +73,9 @@ services:
     networks:
       - bm-ai-network
     restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   qdrant_storage:

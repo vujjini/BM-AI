@@ -1,11 +1,17 @@
-from pydantic_settings import BaseSettings
-from typing import Optional
 import os
 import logging
+from pathlib import Path
+from typing import Optional
+from pydantic_settings import BaseSettings
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+logger.setLevel(log_level)
 
 class Settings(BaseSettings):
     # Make GOOGLE_API_KEY optional during startup, but warn if missing
@@ -16,6 +22,9 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_URL: Optional[str] = None  # For cloud setup, overrides host/port
     QDRANT_API_KEY: Optional[str] = None  # Optional for local setup
+    
+    # Uploads directory for storing PDF files
+    UPLOADS_DIR: str = "uploads"
     
     class Config:
         env_file = ".env"
@@ -36,6 +45,11 @@ try:
     
     # Validate settings but don't fail startup
     settings.validate_required_settings()
+    
+    # Create uploads directory if it doesn't exist
+    uploads_path = Path(settings.UPLOADS_DIR)
+    uploads_path.mkdir(exist_ok=True)
+    logger.info(f"Uploads directory: {uploads_path.absolute()}")
     
 except Exception as e:
     logger.error(f"Error loading configuration: {e}")

@@ -13,9 +13,14 @@ export interface ChatRequest {
   question: string;
 }
 
+export interface Source {
+  filename: string;
+  pdf_path: string | null;
+}
+
 export interface ChatResponse {
   answer: string;
-  sources: string[];
+  sources: Source[];
 }
 
 export interface FileProcessingResult {

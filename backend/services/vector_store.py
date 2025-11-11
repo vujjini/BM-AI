@@ -2,14 +2,10 @@ from langchain_qdrant import QdrantVectorStore
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
-from config import settings
+from config import settings, logger
 from typing import List
 from langchain_core.documents import Document
-import logging
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class VectorStoreService:
     def __init__(self):

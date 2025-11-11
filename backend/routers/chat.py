@@ -6,10 +6,11 @@ router = APIRouter()
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    result = chat_service.get_answer(request.question)
+    result = await chat_service.get_answer(request.question)  # Added await here
     return ChatResponse(
         answer=result["answer"],
-        sources=result["sources"]
+        sources=result["sources"],
+        enhanced_question=result.get("enhanced_question", "")  # Added enhanced_question
     )
 
 @router.get("/health")

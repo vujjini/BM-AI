@@ -3,6 +3,7 @@ import { Building, Wifi, WifiOff } from 'lucide-react';
 import { FileUpload } from './components/FileUpload';
 import { ChatInterface } from './components/ChatInterface';
 import { Notification } from './components/Notification';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { apiService } from './services/api';
 import './App.css';
 
@@ -98,7 +99,9 @@ function App() {
           <div className="chat-section">
             <h2>Ask Questions</h2>
             <p>Chat with your documents using natural language</p>
-            <ChatInterface onError={handleChatError} />
+            <ErrorBoundary>
+              <ChatInterface onError={handleChatError} />
+            </ErrorBoundary>
           </div>
         </div>
       </main>
