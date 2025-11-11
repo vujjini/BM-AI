@@ -15,14 +15,23 @@ class ChatService:
 
         # Template for enhancing the user's prompt
         self.enhancement_template = """
-        You are an expert at refining user queries for better information retrieval.
-        
-        Your task is to:
-        1. Expand the user's question to include relevant context and synonyms
-        2. Generate a more detailed version of the question that would be better for document retrieval
-        
-        Original question: {question}
-        """
+            You are an expert at refining and expanding user queries for better information retrieval.
+
+            Your task:
+            1. Correct any grammatical issues.
+            2. Clarify vague or ambiguous wording while keeping the original intent.
+            3. Expand the query by including:
+            - Key terminology and relevant definitions.
+            - Common synonyms or alternate phrases used for the same concept.
+            - Related entities, domains, or contexts that could improve recall.
+            4. Ensure the result is concise, natural-sounding, and optimized for semantic retrieval systems (e.g., vector search).
+
+            Output only the enhanced query.
+
+            Original question: {question}
+            """
+
+
         
         self.prompt_template = PromptTemplate(
             template="""

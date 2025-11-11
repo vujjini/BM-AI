@@ -96,7 +96,7 @@ class VectorStoreService:
         if self.vectorstore and documents:
             self.vectorstore.add_documents(documents)
     
-    def get_retriever(self, k: int = 3):
+    def get_retriever(self, k: int = 1):
         """Get retriever for similarity search"""
         if self.vectorstore:
             return self.vectorstore.as_retriever(search_kwargs={"k": k})
