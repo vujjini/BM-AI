@@ -96,10 +96,18 @@ class VectorStoreService:
         if self.vectorstore and documents:
             self.vectorstore.add_documents(documents)
     
-    def get_retriever(self, k: int = 1):
-        """Get retriever for similarity search"""
+    # In vector_store.py
+    def get_retriever(self, k: int = 3, score_threshold: float = 0.3):
+        """Get retriever with optimized settings for better matching"""
         if self.vectorstore:
-            return self.vectorstore.as_retriever(search_kwargs={"k": k})
+            return self.vectorstore.as_retriever(
+                search_type="similarity",  # Start with basic similarity
+                search_kwargs={
+                    "k": k * 2,  # Get more candidates
+                    "score_threshold": score_threshold,  # Lower threshold
+                    "filter": None
+                }
+            )
         return None
 
 # Global instance
