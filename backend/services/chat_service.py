@@ -1,10 +1,14 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_classic.chains import RetrievalQA
-from langchain_classic.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from services.vector_store import vector_store_service
 from config import settings, logger
-from typing import Dict, Any
+from typing import Dict, Any, List
+from pydantic import BaseModel, Field
 import re
+
+class RagResponse(BaseModel):
+    answer: str = Field(description="The answer to the user's question based strictly on the provided context.")
+    cited_sources: List[str] = Field(description="A list of filenames of the documents that were actually used to derive the answer. Do not include documents that were retrieved but irrelevant.")
 
 class ChatService:
     def __init__(self):
@@ -52,20 +56,8 @@ class ChatService:
             input_variables=["context", "question"]
         )
         
-        self.qa_chain = None
-        self._setup_qa_chain()
-    
-    def _setup_qa_chain(self):
-        """Setup the QA chain"""
-        retriever = vector_store_service.get_retriever()
-        if retriever:
-            self.qa_chain = RetrievalQA.from_chain_type(
-                llm=self.llm,
-                chain_type="stuff",
-                retriever=retriever,
-                chain_type_kwargs={"prompt": self.prompt_template},
-                return_source_documents=True
-            )
+        # self.qa_chain was removed as we use custom LCEL chain now
+        pass
     
     async def enhance_question(self, question: str) -> Dict[str, str]:
         """Enhance the user's question for better retrieval and response"""
@@ -122,15 +114,13 @@ class ChatService:
     #         }
 # In chat_service.py, update the get_answer method:
     async def get_answer(self, question: str) -> Dict[str, Any]:
-        if not self.qa_chain:
-            return {
-                "answer": "The system is not ready. Please try again later.",
-                "sources": []
-            }
+        # if not self.qa_chain:
+        # We process anyway since we don't rely on qa_chain anymore
+        pass
         
         try:
             # Step 1: Get the retriever
-            retriever = vector_store_service.get_retriever(k=2, score_threshold=0.3)
+            retriever = vector_store_service.get_retriever(k=5, score_threshold=0.3)
             
             # Step 2: Use the correct method name for Qdrant
             docs = retriever.invoke(question)  # Changed from get_relevant_documents to invoke
@@ -157,7 +147,9 @@ class ChatService:
             context = "\n\n".join([f"Source: {doc.metadata.get('filename', 'Unknown')}\n{doc.page_content}" 
                                 for doc in docs])
             
-            result = self.llm.invoke(
+            structured_llm = self.llm.with_structured_output(RagResponse)
+            
+            response = await structured_llm.ainvoke(
                 self.prompt_template.format(
                     context=context,
                     question=question
@@ -193,20 +185,25 @@ class ChatService:
         #         "answer": "Sorry, I encountered an error while processing your request.",
         #         "sources": []
         #     }
-        # Extract sources from the retrieved documents
+            # Step 4: Map cited sources back to document metadata
             sources = []
             seen_files = set()
-            for doc in docs:
-                filename = doc.metadata.get("filename", "Unknown")
-                if filename not in seen_files:
+            
+            # Create a lookup for docs by filename
+            doc_map = {doc.metadata.get("filename", "").lower(): doc for doc in docs}
+            
+            for cited_file in response.cited_sources:
+                clean_name = cited_file.strip().lower()
+                if clean_name in doc_map and clean_name not in seen_files:
+                    doc = doc_map[clean_name]
                     sources.append({
-                        "filename": filename,
+                        "filename": doc.metadata.get("filename", "Unknown"),
                         "pdf_path": doc.metadata.get("pdf_path")
                     })
-                    seen_files.add(filename)
+                    seen_files.add(clean_name)
 
             return {
-                "answer": result.content,
+                "answer": response.answer,
                 "sources": sources,
                 "enhanced_question": question
             }
