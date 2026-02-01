@@ -31,6 +31,10 @@ def extract_info_from_excel(wb: openpyxl.Workbook) -> List[List]:
         # Iterate through all cells in the sheet
         for row in sheet.iter_rows(values_only=True):
             if found:
+                # Check for "BUILDING MANAGER CHECKLIST" to stop extraction
+                if any(cell and isinstance(cell, str) and "BUILDING MANAGER CHECKLIST" in cell for cell in row):
+                    break
+                
                 # Append rows after the "additional notes" cell
                 filtered_row = [cell for cell in row if cell is not None]
                 if filtered_row:  # Only add non-empty rows
