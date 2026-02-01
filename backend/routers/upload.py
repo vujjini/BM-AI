@@ -1,12 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
-from services.excel_processer import process_excel_to_documents, process_pdf_folder_to_documents, process_mixed_folder_to_documents
+from services.excel_processer import process_excel_to_documents
 from services.pdf_processor import PDFProcessor
 from services.vector_store import vector_store_service
 from services.document_utils import (
-    create_documents_from_extracted_data,
-    collect_files_from_directory,
-    get_file_type,
-    FileProcessingStats
+    create_documents_from_extracted_data
 )
 from models.schemas import UploadResponse, FolderUploadResponse, FileProcessingResult
 from typing import List, Optional

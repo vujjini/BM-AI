@@ -3,8 +3,8 @@ import pandas as pd
 import openpyxl
 import tabula
 from typing import List, Tuple, Optional
-from pathlib import Path
-from .document_utils import extract_info_from_excel, safe_filename_for_excel_sheet
+
+from .document_utils import extract_info_from_excel
 from config import logger
 
 class PDFProcessor:
@@ -165,109 +165,4 @@ class PDFProcessor:
         
         return extracted_data_list
     
-    def get_folder_pdf_count(self, folder_path: str) -> int:
-        """
-        Count the number of PDF files in a folder.
-        
-        Args:
-            folder_path (str): Path to the folder
-            
-        Returns:
-            int: Number of PDF files found
-        """
-        if not os.path.exists(folder_path):
-            return 0
-        
-        pdf_count = sum(1 for filename in os.listdir(folder_path) 
-                       if filename.lower().endswith('.pdf'))
-        return pdf_count
-    
-    def save_extracted_data_to_excel(self, extracted_data_list: List[Tuple[str, List[List]]], 
-                                   output_file: str) -> bool:
-        """
-        Save all extracted data to a consolidated Excel file.
-        
-        Args:
-            extracted_data_list: List of (filename, extracted_data) tuples
-            output_file: Path to output Excel file
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-                for filename, extracted_data in extracted_data_list:
-                    if extracted_data:
-                        # Convert to DataFrame
-                        df = pd.DataFrame(extracted_data)
-                        
-                        # Create a safe sheet name using shared utility
-                        sheet_name = safe_filename_for_excel_sheet(filename)
-                        
-                        # Write to Excel
-                        df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
-            
-            logger.info(f"Consolidated data saved to: {output_file}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error saving consolidated data: {str(e)}")
-            return False
 
-
-# Convenience function that matches the original reference code structure
-def process_pdfs_and_extract_data(folder_path: str, max_files: Optional[int] = None) -> List[List[List]]:
-    """
-    Legacy function that matches the original reference code interface.
-    
-    Args:
-        folder_path (str): Path to folder containing PDF files
-        max_files (int, optional): Maximum number of files to process
-        
-    Returns:
-        List of extracted data from all processed files
-    """
-    processor = PDFProcessor()
-    results = processor.process_pdf_folder(folder_path, max_files)
-    
-    # Return just the extracted data (matching original function signature)
-    return [data for filename, data in results]
-
-
-# Example usage function
-def main():
-    """
-    Example usage of the PDFProcessor class.
-    """
-    # Example folder path - update this to your actual folder
-    folder_path = r"C:\path\to\your\pdf\folder"
-    
-    # Initialize processor
-    processor = PDFProcessor()
-    
-    # Check how many PDFs are in the folder
-    pdf_count = processor.get_folder_pdf_count(folder_path)
-    print(f"Found {pdf_count} PDF files in the folder")
-    
-    # Process all PDFs (or limit to first 8 like in original code)
-    extracted_data_list = processor.process_pdf_folder(folder_path, max_files=8)
-    
-    # Print results
-    for filename, data in extracted_data_list:
-        print(f"\nData from {filename}:")
-        if data:
-            print(f"  Extracted {len(data)} rows of data")
-            # Print last row of last file (matching original code)
-            if data:
-                print(f"  Last row: {data[-1]}")
-        else:
-            print("  No data extracted")
-    
-    # Save consolidated results
-    if extracted_data_list:
-        output_file = os.path.join(folder_path, "consolidated_extracted_data.xlsx")
-        processor.save_extracted_data_to_excel(extracted_data_list, output_file)
-
-
-if __name__ == "__main__":
-    main()
