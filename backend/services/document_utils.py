@@ -31,6 +31,10 @@ def extract_info_from_excel(wb: openpyxl.Workbook) -> List[List]:
         # Iterate through all cells in the sheet
         for row in sheet.iter_rows(values_only=True):
             if found:
+                # Check for "BUILDING MANAGER CHECKLIST" to stop extraction
+                if any(cell and isinstance(cell, str) and "BUILDING MANAGER CHECKLIST" in cell for cell in row):
+                    break
+                
                 # Append rows after the "additional notes" cell
                 filtered_row = [cell for cell in row if cell is not None]
                 if filtered_row:  # Only add non-empty rows
@@ -191,134 +195,4 @@ def create_documents_from_excel_sheets(extracted_data: List[List], filename: str
     return text_splitter.split_documents(documents)
 
 
-def get_supported_file_extensions() -> Dict[str, List[str]]:
-    """
-    Get supported file extensions by category.
-    
-    Returns:
-        Dict mapping file categories to their extensions
-    """
-    return {
-        'pdf': ['.pdf'],
-        'excel': ['.xlsx', '.xls'],
-        'all_supported': ['.pdf', '.xlsx', '.xls']
-    }
 
-
-def is_supported_file(filename: str, file_type: Optional[str] = None) -> bool:
-    """
-    Check if a file is supported based on its extension.
-    
-    Args:
-        filename: Name of the file
-        file_type: Optional specific file type to check ('pdf', 'excel')
-        
-    Returns:
-        bool: True if file is supported
-    """
-    extensions = get_supported_file_extensions()
-    
-    if file_type:
-        return filename.lower().endswith(tuple(extensions.get(file_type, [])))
-    else:
-        return filename.lower().endswith(tuple(extensions['all_supported']))
-
-
-def get_file_type(filename: str) -> Optional[str]:
-    """
-    Determine the file type based on extension.
-    
-    Args:
-        filename: Name of the file
-        
-    Returns:
-        str: File type ('pdf', 'excel') or None if unsupported
-    """
-    extensions = get_supported_file_extensions()
-    
-    if filename.lower().endswith(tuple(extensions['pdf'])):
-        return 'pdf'
-    elif filename.lower().endswith(tuple(extensions['excel'])):
-        return 'excel'
-    else:
-        return None
-
-
-def collect_files_from_directory(directory_path: str, max_files: Optional[int] = None, 
-                                file_type: Optional[str] = None) -> List[str]:
-    """
-    Collect supported files from a directory.
-    
-    Args:
-        directory_path: Path to directory
-        max_files: Maximum number of files to collect
-        file_type: Optional file type filter ('pdf', 'excel')
-        
-    Returns:
-        List[str]: List of file paths
-    """
-    collected_files = []
-    
-    for root, dirs, files in os.walk(directory_path):
-        for file in files:
-            if is_supported_file(file, file_type):
-                collected_files.append(os.path.join(root, file))
-                
-                if max_files and len(collected_files) >= max_files:
-                    return collected_files
-    
-    return collected_files
-
-
-def safe_filename_for_excel_sheet(filename: str, max_length: int = 31) -> str:
-    """
-    Create a safe sheet name for Excel from a filename.
-    
-    Args:
-        filename: Original filename
-        max_length: Maximum length for sheet name
-        
-    Returns:
-        str: Safe sheet name
-    """
-    # Remove extension and limit length
-    base_name = os.path.splitext(filename)[0]
-    
-    # Replace invalid characters for Excel sheet names
-    invalid_chars = ['\\', '/', '*', '[', ']', ':', '?']
-    for char in invalid_chars:
-        base_name = base_name.replace(char, '_')
-    
-    # Limit length
-    return base_name[:max_length]
-
-
-class FileProcessingStats:
-    """
-    Helper class to track file processing statistics.
-    """
-    
-    def __init__(self):
-        self.total_files = 0
-        self.successful_files = 0
-        self.failed_files = 0
-        self.total_documents = 0
-        self.processing_summary = {'pdf': 0, 'excel': 0}
-    
-    def add_success(self, file_type: str, documents_count: int):
-        """Add a successful file processing result."""
-        self.successful_files += 1
-        self.total_documents += documents_count
-        self.processing_summary[file_type] = self.processing_summary.get(file_type, 0) + 1
-    
-    def add_failure(self):
-        """Add a failed file processing result."""
-        self.failed_files += 1
-    
-    def set_total_files(self, count: int):
-        """Set the total number of files processed."""
-        self.total_files = count
-    
-    def get_summary_message(self) -> str:
-        """Get a summary message of the processing results."""
-        return f"Processed {self.total_files} files: {self.successful_files} successful, {self.failed_files} failed"

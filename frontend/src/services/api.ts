@@ -47,16 +47,7 @@ export interface FolderUploadResponse {
   processing_summary: Record<string, number>;
 }
 
-export interface PDFManualUploadResponse {
-  message: string;
-  filename: string;
-  file_size: number;
-  page_count: number;
-  text_length: number;
-  documents_processed: number;
-  extraction_method: string;
-  processing_time: number;
-}
+
 
 export const apiService = {
   // Chat endpoint
@@ -69,7 +60,7 @@ export const apiService = {
   async uploadFile(file: File): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await api.post<UploadResponse>('/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -78,26 +69,13 @@ export const apiService = {
     return response.data;
   },
 
-  // Multiple files upload
-  async uploadFolder(files: File[]): Promise<FolderUploadResponse> {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-    
-    const response = await api.post<FolderUploadResponse>('/upload_folder', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+
 
   // ZIP file upload
   async uploadZipFolder(file: File): Promise<FolderUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await api.post<FolderUploadResponse>('/upload_zip_folder', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -106,18 +84,7 @@ export const apiService = {
     return response.data;
   },
 
-  // PDF manual upload
-  async uploadPDFManual(file: File): Promise<PDFManualUploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post<PDFManualUploadResponse>('/upload_manual', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+
 
   // Health check
   async healthCheck(): Promise<{ status: string }> {
