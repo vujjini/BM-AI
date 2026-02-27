@@ -91,4 +91,42 @@ export const apiService = {
     const response = await api.get('/health');
     return response.data;
   },
+
+  // Box Integration
+  async getBoxFolders(): Promise<BoxFolder[]> {
+    const response = await api.get<BoxFolder[]>('/box/folders');
+    return response.data;
+  },
+
+  // Dispatch Box ingestion as a background job, returns job_id immediately
+  async ingestBoxFolders(folderIds: string[]): Promise<JobResponse> {
+    const response = await api.post<JobResponse>('/box/ingest', { folder_ids: folderIds });
+    return response.data;
+  },
+
+  // Poll job status by job_id
+  async getJobStatus(jobId: string): Promise<JobStatusResponse> {
+    const response = await api.get<JobStatusResponse>(`/box/job/${jobId}`);
+    return response.data;
+  },
 };
+
+export interface BoxFolder {
+  id: string;
+  name: string;
+}
+
+export interface JobResponse {
+  job_id: string;
+  status: string;
+  message: string;
+}
+
+export interface JobStatusResponse {
+  job_id: string;
+  status: 'queued' | 'running' | 'complete' | 'failed';
+  current: number;
+  total: number;
+  processed_count?: number;
+  details: string[];
+}

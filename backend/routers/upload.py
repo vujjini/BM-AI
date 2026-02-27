@@ -1,10 +1,4 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
-from services.excel_processer import process_excel_to_documents
-from services.pdf_processor import PDFProcessor
-from services.vector_store import vector_store_service
-from services.document_utils import (
-    create_documents_from_extracted_data
-)
 from models.schemas import UploadResponse, FolderUploadResponse, FileProcessingResult
 from typing import List, Optional
 import tempfile
@@ -12,9 +6,9 @@ import os
 import shutil
 import zipfile
 from pathlib import Path
-import os
 from config import settings, logger
 import uuid
+from services.ingestion_service import ingestion_service
 
 router = APIRouter()
 
@@ -26,6 +20,7 @@ async def upload_file(file: UploadFile = File(...)):
     if file_ext not in ['.xlsx', '.xls', '.pdf']:
         raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls) and PDF files are supported")
     
+    tmp_file_path = None
     try:
         # Save uploaded file temporarily
         suffix = f'.{file_ext}'
@@ -34,51 +29,24 @@ async def upload_file(file: UploadFile = File(...)):
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Process the file based on type
-        if file_ext == '.pdf':
-            # Store PDF file permanently
-            stored_filename = f"{uuid.uuid4()}_{file.filename}"
-            stored_path = os.path.join(settings.UPLOADS_DIR, stored_filename)
-            shutil.copy2(tmp_file_path, stored_path)
-            
-            # Process PDF file
-            pdf_processor = PDFProcessor()
-            extracted_data = pdf_processor.process_single_pdf(tmp_file_path)[1]
-            
-            if extracted_data:
-                documents = create_documents_from_extracted_data(
-                    extracted_data, 
-                    file.filename, 
-                    "pdf_extraction", 
-                    {"original_format": "pdf", "pdf_path": stored_filename}
-                )
-            else:
-                documents = []
-        else:
-            # Process Excel file
-            documents = process_excel_to_documents(tmp_file_path)
+        # Process the file using IngestionService
+        success, message, doc_count, _ = ingestion_service.process_file_path(tmp_file_path, original_filename=file.filename)
         
-        # Add to vector store
-        if documents:
-            vector_store_service.add_documents(documents)
-        
-        # Clean up temporary file
-        os.unlink(tmp_file_path)
-        
+        if not success:
+             raise Exception(message)
+
         return UploadResponse(
-            message="File processed successfully",
+            message=message,
             filename=file.filename,
-            documents_processed=1
+            documents_processed=doc_count
         )
     
     except Exception as e:
-        if 'tmp_file_path' in locals():
-            os.unlink(tmp_file_path)
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-
-
-
-
+    
+    finally:
+        if tmp_file_path and os.path.exists(tmp_file_path):
+            os.unlink(tmp_file_path)
 
 @router.post("/upload_zip_folder", response_model=FolderUploadResponse)
 async def upload_zip_folder(file: UploadFile = File(...)):
@@ -123,9 +91,7 @@ async def upload_zip_folder(file: UploadFile = File(...)):
 async def process_zip_folder(folder_path: str) -> FolderUploadResponse:
     """
     Process all PDF and Excel files in a folder using the same logic as single file upload.
-    Each file type is processed with its respective working logic.
     """
-    pdf_processor = PDFProcessor()
     file_results = []
     total_documents = 0
     successful_files = 0
@@ -145,77 +111,36 @@ async def process_zip_folder(folder_path: str) -> FolderUploadResponse:
     if not all_files:
         raise HTTPException(status_code=400, detail="No PDF or Excel files found in the ZIP archive")
     
-    # Process each file using the same logic as single file upload
+    # Process each file using IngestionService
     for file_path in all_files:
         filename = os.path.basename(file_path)
         file_ext = os.path.splitext(filename)[1].lower()
-        
+        file_type = 'pdf' if file_ext == '.pdf' else 'excel'
+
         try:
-            if file_ext == '.pdf':
-                # Store PDF file permanently
-                stored_filename = f"{uuid.uuid4()}_{filename}"
-                stored_path = os.path.join(settings.UPLOADS_DIR, stored_filename)
-                shutil.copy2(file_path, stored_path)
-                
-                # Process PDF file - same as single file upload
-                extracted_data = pdf_processor.process_single_pdf(file_path)[1]
-                
-                if extracted_data:
-                    # Convert to documents - same as single file upload
-                    documents = create_documents_from_extracted_data(
-                        extracted_data, 
-                        filename, 
-                        "pdf_extraction", 
-                        {"original_format": "pdf", "pdf_path": stored_filename}
-                    )
-                    
-                    # Add to vector store - same as single file upload
-                    vector_store_service.add_documents(documents)
-                    
-                    file_results.append(FileProcessingResult(
-                        filename=filename,
-                        success=True,
-                        documents_processed=len(documents),
-                        file_type='pdf'
-                    ))
-                    
-                    total_documents += len(documents)
-                    successful_files += 1
-                    processing_summary['pdf'] += 1
-                    logger.info(f"Successfully processed PDF: {filename} ({len(documents)} documents)")
-                else:
-                    file_results.append(FileProcessingResult(
-                        filename=filename,
-                        success=False,
-                        documents_processed=0,
-                        error_message="No data extracted from PDF",
-                        file_type='pdf'
-                    ))
-                    failed_files += 1
-                    logger.warning(f"No data extracted from PDF: {filename}")
-                    
-            elif file_ext in ['.xlsx', '.xls']:
-                # Process Excel file - same as single file upload
-                documents = process_excel_to_documents(file_path)
-                
-                # Add to vector store - same as single file upload
-                if documents:
-                    vector_store_service.add_documents(documents)
-                
+            success, message, doc_count, _ = ingestion_service.process_file_path(file_path, original_filename=filename)
+            
+            if success:
                 file_results.append(FileProcessingResult(
                     filename=filename,
                     success=True,
-                    documents_processed=len(documents) if documents else 0,
-                    file_type='excel'
+                    documents_processed=doc_count,
+                    file_type=file_type
                 ))
-                
-                total_documents += len(documents) if documents else 0
+                total_documents += doc_count
                 successful_files += 1
-                processing_summary['excel'] += 1
-                logger.info(f"Successfully processed Excel: {filename} ({len(documents) if documents else 0} documents)")
+                processing_summary[file_type] += 1
+            else:
+                file_results.append(FileProcessingResult(
+                    filename=filename,
+                    success=False,
+                    documents_processed=0,
+                    error_message=message,
+                    file_type=file_type
+                ))
+                failed_files += 1
                 
         except Exception as e:
-            file_type = 'pdf' if file_ext == '.pdf' else 'excel'
             file_results.append(FileProcessingResult(
                 filename=filename,
                 success=False,
@@ -235,9 +160,3 @@ async def process_zip_folder(folder_path: str) -> FolderUploadResponse:
         file_results=file_results,
         processing_summary=processing_summary
     )
-
-
-
-
-
-# Removed _convert_extracted_data_to_documents - now using shared utility create_documents_from_extracted_data

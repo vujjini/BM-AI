@@ -41,7 +41,7 @@ def extract_info_from_excel(wb: openpyxl.Workbook) -> List[List]:
                     extracted_data.append(filtered_row)
             else:
                 # Check for "additional notes" in any cell of the row (case-sensitive)
-                if any(cell and isinstance(cell, str) and "additional notes:" in cell.lower() for cell in row):
+                if any(cell and isinstance(cell, str) and ("additional" in cell.lower() or "notes" in cell.lower()) for cell in row):
                     found = True
     
     return extracted_data
