@@ -26,8 +26,17 @@ class Settings(BaseSettings):
     # Uploads directory for storing PDF files
     UPLOADS_DIR: str = "uploads"
     
+    # Box Configuration
+    BOX_DEVELOPER_TOKEN: Optional[str] = None
+    BOX_CLIENT_ID: Optional[str] = None
+    BOX_CLIENT_SECRET: Optional[str] = None
+    BOX_ENTERPRISE_ID: Optional[str] = None
+
+    # Redis / Celery
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     class Config:
-        env_file = ".env"
+        env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
         extra = "ignore"  # Ignore extra environment variables
     
     def validate_required_settings(self):

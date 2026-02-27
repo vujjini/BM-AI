@@ -13,3 +13,6 @@ pandas
 requests
 langchain-text-splitters
 langchain-classic
+box-sdk-gen
+celery[redis]
+redis

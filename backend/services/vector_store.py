@@ -11,7 +11,7 @@ class VectorStoreService:
     def __init__(self):
         logger.info("Initializing vector store service...")
         self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
+            model="models/gemini-embedding-001",
             google_api_key=settings.GOOGLE_API_KEY
         )
         
@@ -72,22 +72,39 @@ class VectorStoreService:
             collections = self.client.get_collections()
             collection_names = [col.name for col in collections.collections]
             
+            EXPECTED_DIM = 3072  # gemini-embedding-001 output dimension
+
             if self.collection_name not in collection_names:
                 logger.info(f"Collection '{self.collection_name}' not found. Creating...")
-                
-                # Create collection with appropriate vector configuration
-                # Google's text-embedding-004 model produces 768-dimensional vectors
                 self.client.create_collection(
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(
-                        size=768,  # Google text-embedding-004 dimension
+                        size=EXPECTED_DIM,  # gemini-embedding-001 dimension
                         distance=Distance.COSINE
                     )
                 )
-                logger.info(f"Successfully created collection '{self.collection_name}'")
+                logger.info(f"Successfully created collection '{self.collection_name}' with dim={EXPECTED_DIM}")
             else:
-                logger.info(f"Collection '{self.collection_name}' already exists")
-                
+                # Check existing collection's vector size and recreate if it doesn't match
+                info = self.client.get_collection(self.collection_name)
+                existing_dim = info.config.params.vectors.size
+                if existing_dim != EXPECTED_DIM:
+                    logger.warning(
+                        f"Collection '{self.collection_name}' has dim={existing_dim}, "
+                        f"expected {EXPECTED_DIM}. Recreating collection..."
+                    )
+                    self.client.delete_collection(self.collection_name)
+                    self.client.create_collection(
+                        collection_name=self.collection_name,
+                        vectors_config=VectorParams(
+                            size=EXPECTED_DIM,
+                            distance=Distance.COSINE
+                        )
+                    )
+                    logger.info(f"Collection recreated with dim={EXPECTED_DIM}. All documents must be re-ingested.")
+                else:
+                    logger.info(f"Collection '{self.collection_name}' already exists with correct dim={existing_dim}")
+
         except Exception as e:
             raise RuntimeError(f"Failed to ensure collection exists: {e}")
     

@@ -42,6 +42,8 @@ class ChatService:
             template="""
             You are a helpful assistant for building managers. Use the provided context 
             from shift logs to answer questions accurately and helpfully in a human like manner.
+
+            When mentioning past actions taken by the building managers from the contex, refer to them as "a BM"
             
             If the context doesn't contain relevant information, say so clearly.
             Keep your answers concise but informative.
@@ -122,8 +124,16 @@ class ChatService:
             # Step 1: Get the retriever
             retriever = vector_store_service.get_retriever(k=5, score_threshold=0.3)
             
+            # Guard: vector store may not have initialized successfully
+            if retriever is None:
+                logger.error("Retriever is None - vector store failed to initialize")
+                return {
+                    "answer": "The document search system is currently unavailable. Please check server logs and ensure the vector store is properly configured.",
+                    "sources": []
+                }
+            
             # Step 2: Use the correct method name for Qdrant
-            docs = retriever.invoke(question)  # Changed from get_relevant_documents to invoke
+            docs = retriever.invoke(question)
             
             if not docs:
                 # Try with enhanced query if first attempt fails

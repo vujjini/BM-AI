@@ -9,7 +9,8 @@ __pycache__/
 .env.docker
 
 # Uploads
-uploads/    
+uploads/
+backend/uploads/  
 
 # Distribution / packaging
 .Python
